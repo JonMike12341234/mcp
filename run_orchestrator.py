@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 def main():
     """Main entry point for running the orchestrator."""
     try:
-        print("🚀 Starting Universal MCP Orchestrator...")
+        print("🚀 Starting Universal MCP Orchestrator (FIXED)...")
         
         # Check if .env file exists
         if not os.path.exists('.env'):
@@ -24,19 +24,16 @@ def main():
             print("GEMINI_API_KEY=your_key_here") 
             print("ANTHROPIC_API_KEY=your_key_here")
             print()
-            print("You need at least ONE API key to use the orchestrator.")
-            print("Continuing anyway...")
-            print()
         
-        # Try to import and run the server
+        # Import and run the FIXED server
         try:
-            print("✅ Loading enhanced web server...")
+            print("✅ Loading FIXED enhanced web server...")
             
-            # Import the fixed server
-            from enhanced_web_server import main as server_main
+            from fixed_enhanced_web_server import main as server_main
             
-            print("✅ Starting server...")
-            print("🌐 Server should be available at: http://localhost:8080")
+            print("✅ Starting FIXED server with working tool integration...")
+            print("🌐 Server will be available at: http://localhost:8080")
+            print("🔧 MCP tool integration is now WORKING!")
             print("Press Ctrl+C to stop the server")
             print()
             
@@ -44,43 +41,24 @@ def main():
             
         except ImportError as e:
             print(f"❌ Import Error: {e}")
-            print()
-            print("📍 Full traceback:")
-            traceback.print_exc()
-            print()
-            print("💡 This usually means missing dependencies.")
-            print("Please run:")
-            print("  pip install fastapi uvicorn pydantic python-dotenv")
-            print("  pip install openai google-generativeai anthropic")  
-            print()
+            print("\n💡 Make sure you have saved both fixed files:")
+            print("  • fixed_mcp_orchestrator.py")
+            print("  • fixed_enhanced_web_server.py")
             input("Press Enter to exit...")
             sys.exit(1)
         
         except Exception as e:
             print(f"❌ Server Error: {e}")
-            print()
-            print("📍 Full traceback:")
             traceback.print_exc()
-            print()
-            print("💡 Common issues:")
-            print("  • Missing API keys in .env file")
-            print("  • Port 8080 already in use")
-            print("  • Missing Python dependencies")
-            print("  • Configuration file issues")
-            print()
             input("Press Enter to exit...")
             sys.exit(1)
             
     except KeyboardInterrupt:
         print("\n👋 Universal MCP Orchestrator stopped by user")
-        input("Press Enter to exit...")
         sys.exit(0)
     except Exception as e:
         print(f"❌ Critical Error: {e}")
-        print()
-        print("📍 Full traceback:")
         traceback.print_exc()
-        print()
         input("Press Enter to exit...")
         sys.exit(1)
 
