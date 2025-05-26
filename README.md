@@ -7,7 +7,7 @@
 **A comprehensive Model Context Protocol server supporting OpenAI, Google Gemini, and Anthropic Claude**
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-Protocol%201.0-purple.svg)](https://modelcontextprotocol.io)
 [![Status](https://img.shields.io/badge/Status-Ready%20for%20Production-green.svg)]()
 
@@ -115,18 +115,9 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ---
 
-## Support & Community
-
-- 📖 [Documentation](https://docs.universal-mcp-server.com)
-- 💬 [Discord Community](https://discord.gg/universal-mcp)
-- 🐛 [Issue Tracker](https://github.com/your-username/universal-mcp-server/issues)
-- 📧 [Email Support](mailto:support@universal-mcp-server.com)
-
----
-
 ## License
 
-MIT License. See [LICENSE](../LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
