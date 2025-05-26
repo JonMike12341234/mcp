@@ -193,8 +193,24 @@ class FixedEnhancedWebServer:
         @self.app.get("/api/mcp-servers")
         async def get_mcp_servers():
             """Get available MCP servers."""
-            # Return empty for now to prevent crashes
-            return {}
+            # Return sample MCP servers for the UI
+            return {
+                "web-search": {
+                    "name": "Web Search",
+                    "description": "Search the web for current information",
+                    "tools": ["search"]
+                },
+                "filesystem": {
+                    "name": "File System",
+                    "description": "Secure file operations",
+                    "tools": ["read_file", "write_file", "list_directory"]
+                },
+                "github": {
+                    "name": "GitHub",
+                    "description": "GitHub repository operations",
+                    "tools": ["get_repo", "list_files", "get_file_content"]
+                }
+            }
         
         @self.app.post("/api/chat")
         async def chat(request: ChatRequest):
@@ -259,339 +275,40 @@ class FixedEnhancedWebServer:
     
     def _get_enhanced_dashboard_html(self):
         """Generate the enhanced dashboard HTML."""
-        return '''<!DOCTYPE html>
+        # Read the full UI from the separate file
+        try:
+            with open('enhanced_web_ui.html', 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            # Fallback to basic UI if file not found
+            return '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal MCP Orchestrator - FIXED</title>
+    <title>Universal MCP Orchestrator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .fixed-badge {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            animation: pulse 2s infinite;
-        }
-        .chat-bubble {
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        .user-bubble {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        }
-        .ai-bubble {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        .loading-dots {
-            display: inline-block;
-        }
-        .loading-dots::after {
-            content: '';
-            animation: dots 2s infinite;
-        }
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div id="app" class="min-h-screen">
-        <!-- Header -->
+    <div class="min-h-screen">
         <header class="gradient-bg text-white shadow-lg">
             <div class="container mx-auto px-6 py-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="flex items-center space-x-3">
-                            <h1 class="text-3xl font-bold">Universal MCP Orchestrator</h1>
-                            <span class="fixed-badge text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                ✅ STABLE
-                            </span>
-                        </div>
-                        <p class="text-blue-100 mt-2">AI Model Integration Platform</p>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="text-right">
-                            <p class="text-sm opacity-90">Connected Providers</p>
-                            <p class="font-semibold">{{ connectedProviders }} / {{ totalProviders }}</p>
-                        </div>
-                    </div>
-                </div>
+                <h1 class="text-3xl font-bold">Universal MCP Orchestrator</h1>
+                <p class="text-blue-100 mt-2">AI Model Integration Platform</p>
             </div>
         </header>
-
         <div class="container mx-auto px-6 py-8">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <!-- Configuration Panel -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white rounded-lg shadow-lg p-6 sticky top-6">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800">Configuration</h2>
-                        
-                        <!-- Model Selection -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-robot mr-2"></i>AI Model
-                            </label>
-                            <select v-model="selectedProvider" @change="updateModels" 
-                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Select Provider</option>
-                                <option v-for="(models, provider) in availableModels" :key="provider" :value="provider">
-                                    {{ provider.charAt(0).toUpperCase() + provider.slice(1) }}
-                                </option>
-                            </select>
-                            
-                            <select v-if="selectedProvider" v-model="selectedModel" 
-                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mt-2">
-                                <option value="">Select Model</option>
-                                <option v-for="model in availableModels[selectedProvider]" :key="model.id" :value="model.id">
-                                    {{ model.name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <!-- System Prompt -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-cog mr-2"></i>System Prompt (Optional)
-                            </label>
-                            <textarea v-model="systemPrompt" 
-                                      class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                      rows="3" placeholder="Enter system instructions..."></textarea>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="space-y-2">
-                            <button @click="clearChat" 
-                                    class="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                                <i class="fas fa-broom mr-2"></i>Clear Chat
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Interface -->
-                <div class="lg:col-span-3">
-                    <div class="bg-white rounded-lg shadow-lg">
-                        <!-- Chat Header -->
-                        <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-                            <div class="flex justify-between items-center">
-                                <h2 class="text-lg font-semibold text-gray-800">
-                                    <i class="fas fa-comments mr-2"></i>AI Chat
-                                </h2>
-                                <div class="flex items-center space-x-2 text-sm text-gray-600">
-                                    <span v-if="selectedProvider && selectedModel">
-                                        <i class="fas fa-robot mr-1"></i>{{ selectedProvider }}/{{ selectedModel }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chat Messages -->
-                        <div class="h-96 overflow-y-auto p-4 space-y-4" ref="chatContainer">
-                            <div v-if="chatMessages.length === 0" class="text-center text-gray-500 mt-8">
-                                <i class="fas fa-comment-dots text-4xl mb-4"></i>
-                                <p>Start a conversation with your AI assistant</p>
-                                <p class="text-sm mt-2">Select a model to get started</p>
-                            </div>
-                            
-                            <div v-for="(message, index) in chatMessages" :key="index" 
-                                 class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
-                                <div class="chat-bubble p-4 rounded-lg text-white" 
-                                     :class="message.role === 'user' ? 'user-bubble' : 'ai-bubble'">
-                                    <div class="flex items-start space-x-2">
-                                        <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
-                                        <div class="flex-1">
-                                            <div class="font-medium text-sm opacity-90 mb-1">
-                                                {{ message.role === 'user' ? 'You' : 'AI Assistant' }}
-                                            </div>
-                                            <div class="whitespace-pre-wrap">{{ message.content }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Loading indicator -->
-                            <div v-if="isLoading" class="flex justify-start">
-                                <div class="ai-bubble p-4 rounded-lg text-white">
-                                    <div class="flex items-center space-x-2">
-                                        <i class="fas fa-robot"></i>
-                                        <div>
-                                            <div class="font-medium text-sm opacity-90 mb-1">AI Assistant</div>
-                                            <div class="loading-dots">Thinking</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chat Input -->
-                        <div class="p-4 border-t border-gray-200">
-                            <div class="flex space-x-2">
-                                <input v-model="userInput" 
-                                       @keyup.enter="sendMessage"
-                                       :disabled="isLoading || !selectedProvider || !selectedModel"
-                                       class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                                       placeholder="Type your message here..." />
-                                <button @click="sendMessage" 
-                                        :disabled="!userInput.trim() || isLoading || !selectedProvider || !selectedModel"
-                                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
-                            <div v-if="!selectedProvider || !selectedModel" class="text-sm text-gray-500 mt-2">
-                                Please select a provider and model to start chatting
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Server Status</h2>
+                <p class="text-green-600">✅ Server is running successfully!</p>
+                <p class="mt-2">Enhanced UI file not found. Please ensure enhanced_web_ui.html exists.</p>
+                <p class="mt-2">🌐 Server available at: http://localhost:8080</p>
             </div>
         </div>
     </div>
-
-    <script>
-        const { createApp } = Vue;
-        
-        createApp({
-            data() {
-                return {
-                    // Configuration
-                    selectedProvider: '',
-                    selectedModel: '',
-                    systemPrompt: '',
-                    
-                    // Data
-                    availableModels: {},
-                    chatMessages: [],
-                    userInput: '',
-                    isLoading: false,
-                    
-                    // Statistics
-                    connectedProviders: 0,
-                    totalProviders: 0
-                }
-            },
-            async mounted() {
-                await this.loadData();
-                this.loadExampleConfiguration();
-            },
-            methods: {
-                async loadData() {
-                    try {
-                        // Load available models
-                        const modelsResponse = await fetch('/api/models');
-                        const modelsData = await modelsResponse.json();
-                        this.availableModels = modelsData;
-                        
-                        // Count connected providers
-                        this.totalProviders = Object.keys(modelsData).length;
-                        this.connectedProviders = Object.values(modelsData).filter(models => 
-                            Array.isArray(models) && models.length > 0
-                        ).length;
-                        
-                    } catch (error) {
-                        console.error('Error loading data:', error);
-                    }
-                },
-                
-                updateModels() {
-                    this.selectedModel = '';
-                },
-                
-                async sendMessage() {
-                    if (!this.userInput.trim() || this.isLoading) return;
-                    
-                    const message = this.userInput.trim();
-                    this.userInput = '';
-                    
-                    // Add user message to chat
-                    this.chatMessages.push({
-                        role: 'user',
-                        content: message,
-                        timestamp: new Date()
-                    });
-                    
-                    this.isLoading = true;
-                    this.scrollToBottom();
-                    
-                    try {
-                        // Send request to backend
-                        const response = await fetch('/api/chat', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                provider: this.selectedProvider,
-                                model: this.selectedModel,
-                                message: message,
-                                system_prompt: this.systemPrompt || null
-                            })
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (result.error) {
-                            throw new Error(result.error);
-                        }
-                        
-                        // Add AI response to chat
-                        this.chatMessages.push({
-                            role: 'assistant',
-                            content: result.response,
-                            timestamp: new Date()
-                        });
-                        
-                    } catch (error) {
-                        console.error('Error sending message:', error);
-                        this.chatMessages.push({
-                            role: 'assistant',
-                            content: `Error: ${error.message}`,
-                            timestamp: new Date(),
-                            isError: true
-                        });
-                    } finally {
-                        this.isLoading = false;
-                        this.scrollToBottom();
-                    }
-                },
-                
-                clearChat() {
-                    this.chatMessages = [];
-                },
-                
-                loadExampleConfiguration() {
-                    // Auto-select first available provider and model
-                    const providers = Object.keys(this.availableModels);
-                    if (providers.length > 0) {
-                        this.selectedProvider = providers[0];
-                        const models = this.availableModels[this.selectedProvider];
-                        if (Array.isArray(models) && models.length > 0) {
-                            this.selectedModel = models[0].id;
-                        }
-                    }
-                },
-                
-                scrollToBottom() {
-                    this.$nextTick(() => {
-                        const container = this.$refs.chatContainer;
-                        if (container) {
-                            container.scrollTop = container.scrollHeight;
-                        }
-                    });
-                }
-            }
-        }).mount('#app');
-    </script>
 </body>
 </html>'''
     

@@ -36,32 +36,52 @@ def main():
             from enhanced_web_server import main as server_main
             
             print("✅ Starting server...")
+            print("🌐 Server should be available at: http://localhost:8080")
+            print("Press Ctrl+C to stop the server")
+            print()
+            
             server_main()
             
         except ImportError as e:
             print(f"❌ Import Error: {e}")
+            print()
+            print("📍 Full traceback:")
+            traceback.print_exc()
             print()
             print("💡 This usually means missing dependencies.")
             print("Please run:")
             print("  pip install fastapi uvicorn pydantic python-dotenv")
             print("  pip install openai google-generativeai anthropic")  
             print()
+            input("Press Enter to exit...")
+            sys.exit(1)
+        
+        except Exception as e:
+            print(f"❌ Server Error: {e}")
+            print()
+            print("📍 Full traceback:")
+            traceback.print_exc()
+            print()
+            print("💡 Common issues:")
+            print("  • Missing API keys in .env file")
+            print("  • Port 8080 already in use")
+            print("  • Missing Python dependencies")
+            print("  • Configuration file issues")
+            print()
+            input("Press Enter to exit...")
             sys.exit(1)
             
     except KeyboardInterrupt:
         print("\n👋 Universal MCP Orchestrator stopped by user")
+        input("Press Enter to exit...")
         sys.exit(0)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Critical Error: {e}")
         print()
         print("📍 Full traceback:")
         traceback.print_exc()
         print()
-        print("💡 Common issues:")
-        print("  • Missing API keys in .env file")
-        print("  • Missing Python dependencies")
-        print("  • Port 8080 already in use")
-        print("  • Permission issues")
+        input("Press Enter to exit...")
         sys.exit(1)
 
 if __name__ == "__main__":
