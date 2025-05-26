@@ -100,8 +100,8 @@ python main.py
 
 - **Full Documentation:** [DOCUMENTATION.md](DOCUMENTATION.md)
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md)
-- **Roadmap:** [FUTURE.md](FUTURE.md)
-- **Protocol Reference:** [MCP.md](MCP.md)
+- **Roadmap:** [Future Features Roadmap](DOCUMENTATION.md#future-features-roadmap)
+- **Protocol Reference:** [Model Context Protocol (MCP)](DOCUMENTATION.md#model-context-protocol-mcp)
 
 ---
 
