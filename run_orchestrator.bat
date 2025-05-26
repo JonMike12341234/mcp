@@ -69,19 +69,23 @@ if exist "venv\Scripts\activate.bat" (
     echo ⚠️  Virtual environment not found. Using system Python.
 )
 
-REM Check MCP dependencies
-echo 🔍 Checking MCP dependencies...
-python -c "import mcp" >nul 2>&1
+REM Install required dependencies
+echo 🔍 Installing required dependencies...
+echo Installing core dependencies...
+pip install python-dotenv fastapi uvicorn pydantic
 if %ERRORLEVEL% NEQ 0 (
-    echo ⚠️  MCP dependencies not found. Installing...
-    pip install mcp anthropic-mcp
-    if %ERRORLEVEL% NEQ 0 (
-        echo ❌ Failed to install MCP dependencies
-        echo Please run: pip install mcp anthropic-mcp
-        pause
-        exit /b 1
-    )
+    echo ❌ Failed to install core dependencies
+    pause
+    exit /b 1
 )
+
+echo Installing MCP dependencies...
+pip install mcp
+if %ERRORLEVEL% NEQ 0 (
+    echo ⚠️  MCP installation had issues, but continuing...
+)
+
+echo ✅ Dependencies installed
 
 REM Check configuration
 if not exist ".env" (
@@ -118,14 +122,48 @@ if %ERRORLEVEL% EQU 0 (
     
     REM Install filesystem server
     echo Installing filesystem MCP server...
-    npm install -g @modelcontextprotocol/server-filesystem >nul 2>&1
+    call npm install -g @modelcontextprotocol/server-filesystem
     
     REM Install git server
     echo Installing git MCP server...
-    npm install -g @modelcontextprotocol/server-git >nul 2>&1
+    call npm install -g @modelcontextprotocol/server-git
     
-    echo ✅ MCP servers installed
+    REM Install web search server (try multiple options)
+    echo Installing web search MCP server...
+    call npm install -g web-search-mcp-server 2>nul
+    if %ERRORLEVEL% NEQ 0 (
+        echo Trying alternative web search server...
+        call npm install -g @pskill9/web-search 2>nul
+        if %ERRORLEVEL% NEQ 0 (
+            echo ⚠️ Web search server installation failed, but continuing...
+        )
+    )
+    
+    echo ✅ MCP servers setup complete
+) else (
+    echo ⚠️ Skipping MCP server installation ^(Node.js not available^)
 )
+
+echo.
+echo ================================================================================
+echo                         Starting MCP Orchestrator
+echo ================================================================================
+echo.
+echo 🚀 Universal MCP Orchestrator is starting...
+echo.
+echo ✨ Features available:
+echo    • Multi-provider AI model selection ^(OpenAI, Gemini, Anthropic^)
+echo    • MCP server integration ^(web search, filesystem, git^)
+echo    • Interactive chat interface with tool visualization
+echo    • Real-time web search without API keys
+echo.
+echo 🌐 Open your browser to: http://localhost:8080
+echo.
+echo 💡 Try asking: "What are the latest AI developments in 2025?"
+echo    with web search enabled!
+echo.
+echo Press Ctrl+C to stop the server
+echo.
 
 echo.
 echo ================================================================================
