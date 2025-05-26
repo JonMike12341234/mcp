@@ -32,3 +32,6 @@ Thumbs.db
 
 # Test/coverage
 *.pkl
+
+# MCP servers (do not upload)
+mcp_servers/
