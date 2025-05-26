@@ -122,6 +122,7 @@ class ChatRequest(BaseModel):
     mcp_server: Optional[str] = None
     message: str
     system_prompt: Optional[str] = None
+    include_debug: bool = True  # NEW: Always include debug info
 
 class FixedEnhancedWebServer:
     """FIXED enhanced web server for the Universal MCP Orchestrator."""
@@ -192,31 +193,43 @@ class FixedEnhancedWebServer:
         
         @self.app.get("/api/mcp-servers")
         async def get_mcp_servers():
-            """Get available MCP servers."""
-            # Return sample MCP servers for the UI
+            """Get available MCP servers with technical names."""
             return {
                 "web-search": {
                     "name": "Web Search",
-                    "description": "Search the web for current information",
-                    "tools": ["search"]
+                    "description": "Search the web for current information using MCP protocol",
+                    "tools": ["web_search"],
+                    "status": "WORKING" if HAS_FIXED_ORCHESTRATOR else "LIMITED",
+                    "technical_name": "web-search-mcp-server",  # NEW: Technical server name
+                    "server_type": "stdio"  # NEW: Server type info
                 },
                 "filesystem": {
                     "name": "File System",
-                    "description": "Secure file operations",
-                    "tools": ["read_file", "write_file", "list_directory"]
+                    "description": "Secure file operations with configurable access controls",
+                    "tools": ["read_file", "write_file", "list_directory"],
+                    "status": "PLANNED",
+                    "technical_name": "@modelcontextprotocol/server-filesystem",  # NEW
+                    "server_type": "stdio"  # NEW
                 },
                 "github": {
                     "name": "GitHub",
-                    "description": "GitHub repository operations",
-                    "tools": ["get_repo", "list_files", "get_file_content"]
+                    "description": "GitHub repository operations via MCP",
+                    "tools": ["get_repo", "list_files", "get_file_content"],
+                    "status": "PLANNED",
+                    "technical_name": "@modelcontextprotocol/server-github",  # NEW
+                    "server_type": "stdio"  # NEW
                 }
             }
         
         @self.app.post("/api/chat")
         async def chat(request: ChatRequest):
-            """Handle chat requests."""
+            """Handle chat requests with FIXED MCP integration and debug info."""
             try:
-                self.logger.info(f"Chat request: {request.provider}/{request.model}")
+                self.logger.info(f"Chat request: {request.provider}/{request.model} with MCP server: {request.mcp_server}")
+                
+                # Add enhanced system prompt for tool-aware queries
+                if request.mcp_server and not request.system_prompt:
+                    request.system_prompt = "You are a helpful AI assistant with access to external tools including web search. When a user asks for current information or something that would benefit from web search, use the available tools to provide accurate, up-to-date responses. Always be clear about when you're using tools to gather information."
                 
                 result = await self.orchestrator.execute_query(
                     provider_name=request.provider,
@@ -228,6 +241,25 @@ class FixedEnhancedWebServer:
                 
                 if "error" in result:
                     raise HTTPException(status_code=400, detail=result["error"])
+                
+                # Log successful tool usage
+                if result.get("tool_used"):
+                    self.logger.info(f"✅ Tool used successfully: {result['tool_used']}")
+                
+                # NEW: Add debug information to response
+                if request.include_debug:
+                    debug_info = {
+                        "userQuery": request.message,
+                        "systemPrompt": request.system_prompt,
+                        "fullResponse": result.get("response", ""),
+                    }
+                    
+                    # Add tool information if available
+                    if result.get("tool_used"):
+                        debug_info["toolInput"] = result.get("tool_input", {})
+                        debug_info["toolOutput"] = result.get("tool_result", {})
+                    
+                    result["debug_info"] = debug_info
                 
                 return result
                 

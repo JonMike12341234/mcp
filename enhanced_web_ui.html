@@ -37,6 +37,25 @@
         .tool-badge {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
+        /* NEW: Debug panel styles */
+        .debug-panel {
+            background: #1f2937;
+            color: #e5e7eb;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .debug-section {
+            border-bottom: 1px solid #374151;
+        }
+        .debug-section:last-child {
+            border-bottom: none;
+        }
+        .debug-toggle {
+            transition: transform 0.2s ease;
+        }
+        .debug-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -46,7 +65,7 @@
             <div class="container mx-auto px-6 py-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-3xl font-bold">Universal MCP Orchestrator</h1>
+                        <h1 class="text-3xl font-bold">Universal MCP Orchestrator w Debug!</h1>
                         <p class="text-blue-100 mt-2">Connect AI models with powerful tools</p>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -110,14 +129,26 @@
                                 </option>
                             </select>
                             
+                            <!-- UPDATED: MCP Server Info Display -->
                             <div v-if="selectedMCPServer" class="mt-2 p-3 bg-gray-50 rounded-lg text-sm">
                                 <p class="font-medium text-gray-700">{{ availableMCPServers[selectedMCPServer].name }}</p>
                                 <p class="text-gray-600 mb-2">{{ availableMCPServers[selectedMCPServer].description }}</p>
-                                <div class="flex flex-wrap gap-1">
-                                    <span v-for="tool in availableMCPServers[selectedMCPServer].tools" :key="tool"
-                                          class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                        {{ tool }}
-                                    </span>
+                                
+                                <!-- UPDATED: Show tools and server technical name -->
+                                <div class="mb-2">
+                                    <p class="font-medium text-gray-600 text-xs">Available Tools:</p>
+                                    <div class="flex flex-wrap gap-1 mb-2">
+                                        <span v-for="tool in availableMCPServers[selectedMCPServer].tools" :key="tool"
+                                              class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                            {{ tool }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- NEW: Show server technical name -->
+                                <div class="text-xs text-gray-500 font-mono">
+                                    <p class="font-medium">Server ID:</p>
+                                    <p class="bg-gray-100 px-2 py-1 rounded">{{ selectedMCPServer }}</p>
                                 </div>
                             </div>
                         </div>
@@ -176,7 +207,7 @@
                             
                             <div v-for="(message, index) in chatMessages" :key="index" 
                                  class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
-                                <div class="chat-bubble p-4 rounded-lg text-white" 
+                                <div class="chat-bubble p-4 rounded-lg text-white w-full max-w-4xl" 
                                      :class="message.role === 'user' ? 'user-bubble' : 'ai-bubble'">
                                     <div class="flex items-start space-x-2">
                                         <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
@@ -193,6 +224,51 @@
                                                     <span class="font-medium">Tool Used: {{ message.toolUsed }}</span>
                                                 </div>
                                                 <div class="opacity-75">{{ message.toolParams }}</div>
+                                            </div>
+                                            
+                                            <!-- NEW: Debug Panel -->
+                                            <div v-if="message.debugInfo && message.role === 'assistant'" class="mt-3">
+                                                <button @click="message.showDebug = !message.showDebug" 
+                                                        class="flex items-center text-xs bg-black bg-opacity-20 px-2 py-1 rounded hover:bg-opacity-30 transition-colors">
+                                                    <i class="fas fa-chevron-down debug-toggle mr-1" 
+                                                       :class="{'collapsed': !message.showDebug}"></i>
+                                                    Debug
+                                                </button>
+                                                
+                                                <div v-show="message.showDebug" class="mt-2 debug-panel rounded-lg overflow-hidden">
+                                                    <!-- System Prompt Section -->
+                                                    <div v-if="message.debugInfo.systemPrompt" class="debug-section p-3">
+                                                        <div class="font-bold text-yellow-400 mb-2">System Prompt:</div>
+                                                        <div class="text-gray-300">{{ message.debugInfo.systemPrompt }}</div>
+                                                    </div>
+                                                    
+                                                    <!-- User Query Section -->
+                                                    <div class="debug-section p-3">
+                                                        <div class="font-bold text-blue-400 mb-2">User Query:</div>
+                                                        <div class="text-gray-300">{{ message.debugInfo.userQuery }}</div>
+                                                    </div>
+                                                    
+                                                    <!-- Tool Usage Section -->
+                                                    <div v-if="message.debugInfo.toolInput || message.debugInfo.toolOutput" class="debug-section p-3">
+                                                        <div class="font-bold text-green-400 mb-2">Tool Execution:</div>
+                                                        
+                                                        <div v-if="message.debugInfo.toolInput" class="mb-2">
+                                                            <div class="font-semibold text-green-300">Tool Input:</div>
+                                                            <pre class="text-gray-300 text-xs overflow-x-auto">{{ JSON.stringify(message.debugInfo.toolInput, null, 2) }}</pre>
+                                                        </div>
+                                                        
+                                                        <div v-if="message.debugInfo.toolOutput">
+                                                            <div class="font-semibold text-green-300">Tool Output:</div>
+                                                            <pre class="text-gray-300 text-xs overflow-x-auto">{{ JSON.stringify(message.debugInfo.toolOutput, null, 2) }}</pre>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Full LLM Response Section -->
+                                                    <div class="debug-section p-3">
+                                                        <div class="font-bold text-purple-400 mb-2">Full LLM Response:</div>
+                                                        <div class="text-gray-300">{{ message.debugInfo.fullResponse }}</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -346,14 +422,22 @@
                             throw new Error(result.error);
                         }
                         
-                        // Add AI response to chat
-                        this.chatMessages.push({
+                        // Add AI response to chat with debug info
+                        const aiMessage = {
                             role: 'assistant',
                             content: result.response,
                             timestamp: new Date(),
                             toolUsed: result.tool_used,
-                            toolParams: result.tool_params ? JSON.stringify(result.tool_params) : null
-                        });
+                            toolParams: result.tool_params ? JSON.stringify(result.tool_params) : null,
+                            showDebug: false // NEW: Control debug panel visibility
+                        };
+                        
+                        // NEW: Add debug information if available
+                        if (result.debug_info) {
+                            aiMessage.debugInfo = result.debug_info;
+                        }
+                        
+                        this.chatMessages.push(aiMessage);
                         
                     } catch (error) {
                         console.error('Error sending message:', error);

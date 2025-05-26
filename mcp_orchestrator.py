@@ -205,278 +205,297 @@ class FixedMCPOrchestrator:
             self.logger.error(f"FIXED: Error executing query: {e}")
             return {"error": str(e)}
     
-    async def _execute_openai_with_tools(
-        self, 
-        provider: OpenAIProvider, 
-        model_id: str, 
-        user_query: str, 
-        system_prompt: Optional[str],
-        tools: List[Dict[str, Any]],
-        mcp_server: str
-    ) -> Dict[str, Any]:
-        """FIXED: Execute OpenAI request with MCP tools properly advertised."""
-        try:
-            # Step 1: Make initial request with tools advertised
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": user_query})
+async def _execute_openai_with_tools(
+    self, 
+    provider: OpenAIProvider, 
+    model_id: str, 
+    user_query: str, 
+    system_prompt: Optional[str],
+    tools: List[Dict[str, Any]],
+    mcp_server: str
+) -> Dict[str, Any]:
+    """FIXED: Execute OpenAI request with MCP tools properly advertised."""
+    try:
+        # Step 1: Make initial request with tools advertised
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        else:
+            messages.append({"role": "system", "content": "You are a helpful assistant with access to web search and other tools. Use tools when they would be helpful to answer the user's question."})
+        messages.append({"role": "user", "content": user_query})
+        
+        self.logger.info(f"FIXED: Advertising {len(tools)} tools to OpenAI model")
+        
+        # Use the OpenAI client directly for function calling
+        response = await provider.client.chat.completions.create(
+            model=model_id,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",  # Let the LLM decide when to use tools
+            max_tokens=2000
+        )
+        
+        message = response.choices[0].message
+        
+        # Step 2: Check if LLM wants to call tools
+        if message.tool_calls:
+            self.logger.info(f"FIXED: LLM requested {len(message.tool_calls)} tool calls")
             
-            self.logger.info(f"FIXED: Advertising {len(tools)} tools to OpenAI model")
+            # Capture first tool call for debug info
+            first_tool_call = message.tool_calls[0]
+            tool_name = first_tool_call.function.name
+            try:
+                tool_arguments = json.loads(first_tool_call.function.arguments)
+            except json.JSONDecodeError:
+                tool_arguments = {}
             
-            # Use the OpenAI client directly for function calling
-            response = await provider.client.chat.completions.create(
+            # Add the assistant's message to conversation
+            messages.append({
+                "role": "assistant", 
+                "content": message.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments
+                        }
+                    }
+                    for tc in message.tool_calls
+                ]
+            })
+            
+            # Execute each tool call via MCP
+            tool_results = []
+            for tool_call in message.tool_calls:
+                try:
+                    arguments = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    arguments = {}
+                
+                self.logger.info(f"FIXED: Executing MCP tool {tool_call.function.name} with args: {arguments}")
+                
+                # Call the MCP server
+                tool_result = await self.mcp_manager.call_tool(mcp_server, tool_call.function.name, arguments)
+                tool_results.append(tool_result)
+                
+                # Add tool result to conversation
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(tool_result)
+                })
+            
+            # Step 3: Get final response from LLM with tool results
+            final_response = await provider.client.chat.completions.create(
                 model=model_id,
                 messages=messages,
-                tools=tools,
-                tool_choice="auto",  # Let the LLM decide when to use tools
                 max_tokens=2000
             )
             
-            message = response.choices[0].message
+            final_content = final_response.choices[0].message.content
             
-            # Step 2: Check if LLM wants to call tools
-            if message.tool_calls:
-                self.logger.info(f"FIXED: LLM requested {len(message.tool_calls)} tool calls")
-                
-                # Add the assistant's message to conversation
-                messages.append({
-                    "role": "assistant", 
-                    "content": message.content,
-                    "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": tc.type,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments
-                            }
-                        }
-                        for tc in message.tool_calls
-                    ]
-                })
-                
-                # Execute each tool call via MCP
-                for tool_call in message.tool_calls:
-                    tool_name = tool_call.function.name
-                    try:
-                        arguments = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError:
-                        arguments = {}
-                    
-                    self.logger.info(f"FIXED: Executing MCP tool {tool_name} with args: {arguments}")
-                    
-                    # Call the MCP server
-                    tool_result = await self.mcp_manager.call_tool(mcp_server, tool_name, arguments)
-                    
-                    # Add tool result to conversation
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": json.dumps(tool_result)
-                    })
-                
-                # Step 3: Get final response from LLM with tool results
-                final_response = await provider.client.chat.completions.create(
-                    model=model_id,
-                    messages=messages,
-                    max_tokens=2000
-                )
-                
-                final_content = final_response.choices[0].message.content
-                
-                return {
-                    "provider": "openai",
-                    "model": model_id,
-                    "mcp_server": mcp_server,
-                    "response": final_content,
-                    "tool_used": message.tool_calls[0].function.name if message.tool_calls else None,
-                    "tool_calls_made": len(message.tool_calls),
-                    "tools_available": len(tools),
-                    "fixed_implementation": True
-                }
-            else:
-                # No tools called, return direct response
-                return {
-                    "provider": "openai",
-                    "model": model_id,
-                    "mcp_server": mcp_server,
-                    "response": message.content,
-                    "tool_used": None,
-                    "tools_available": len(tools),
-                    "fixed_implementation": True
-                }
-                
-        except Exception as e:
-            self.logger.error(f"FIXED: Error in OpenAI tool execution: {e}")
-            return {"error": f"OpenAI tool execution failed: {str(e)}"}
-    
-    async def _execute_anthropic_with_tools(
-        self, 
-        provider: AnthropicProvider, 
-        model_id: str, 
-        user_query: str, 
-        system_prompt: Optional[str],
-        tools: List[Dict[str, Any]],
-        mcp_server: str
-    ) -> Dict[str, Any]:
-        """FIXED: Execute Anthropic request with MCP tools properly advertised."""
-        try:
-            messages = [{"role": "user", "content": user_query}]
-            
-            self.logger.info(f"FIXED: Advertising {len(tools)} tools to Anthropic model")
-            
-            # Step 1: Make request with tools
-            response = await provider.client.messages.create(
-                model=model_id,
-                max_tokens=2000,
-                messages=messages,
-                tools=tools,
-                system=system_prompt
-            )
-            
-            # Step 2: Check if Claude wants to use tools
-            if response.content and len(response.content) > 0:
-                for content_block in response.content:
-                    if content_block.type == "tool_use":
-                        tool_name = content_block.name
-                        tool_args = content_block.input
-                        
-                        self.logger.info(f"FIXED: Anthropic requested tool {tool_name} with args: {tool_args}")
-                        
-                        # Execute tool via MCP
-                        tool_result = await self.mcp_manager.call_tool(mcp_server, tool_name, tool_args)
-                        
-                        # Add tool result and get final response
-                        messages.append({"role": "assistant", "content": response.content})
-                        messages.append({
-                            "role": "user", 
-                            "content": [{
-                                "type": "tool_result",
-                                "tool_use_id": content_block.id,
-                                "content": json.dumps(tool_result)
-                            }]
-                        })
-                        
-                        # Get final response
-                        final_response = await provider.client.messages.create(
-                            model=model_id,
-                            max_tokens=2000,
-                            messages=messages,
-                            tools=tools,
-                            system=system_prompt
-                        )
-                        
-                        final_text = final_response.content[0].text if final_response.content else "No response"
-                        
-                        return {
-                            "provider": "anthropic",
-                            "model": model_id,
-                            "mcp_server": mcp_server,
-                            "response": final_text,
-                            "tool_used": tool_name,
-                            "tools_available": len(tools),
-                            "fixed_implementation": True
-                        }
-                
-                # No tool use, return direct response
-                response_text = response.content[0].text if response.content else "No response"
-                return {
-                    "provider": "anthropic",
-                    "model": model_id,
-                    "mcp_server": mcp_server,
-                    "response": response_text,
-                    "tool_used": None,
-                    "tools_available": len(tools),
-                    "fixed_implementation": True
-                }
-                
-        except Exception as e:
-            self.logger.error(f"FIXED: Error in Anthropic tool execution: {e}")
-            return {"error": f"Anthropic tool execution failed: {str(e)}"}
-    
-    async def _execute_gemini_with_tools(
-        self, 
-        provider: GeminiProvider, 
-        model_id: str, 
-        user_query: str, 
-        system_prompt: Optional[str],
-        tools: List[Dict[str, Any]],
-        mcp_server: str
-    ) -> Dict[str, Any]:
-        """FIXED: Execute Gemini request with MCP tools properly advertised."""
-        try:
-            self.logger.info(f"FIXED: Advertising {len(tools)} tools to Gemini model")
-            
-            # Initialize model with system instruction
-            model_kwargs = {}
-            if system_prompt:
-                model_kwargs["system_instruction"] = system_prompt
-            
-            generation_model = provider.client.GenerativeModel(model_id, **model_kwargs)
-            
-            # Step 1: Make request with tools
-            response = generation_model.generate_content(
-                user_query,
-                tools=tools
-            )
-            
-            # Step 2: Check if Gemini wants to use tools
-            if hasattr(response, 'candidates') and response.candidates:
-                candidate = response.candidates[0]
-                
-                if hasattr(candidate, 'content') and candidate.content.parts:
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'function_call'):
-                            # Tool call detected
-                            func_call = part.function_call
-                            tool_name = func_call.name
-                            tool_args = dict(func_call.args)
-                            
-                            self.logger.info(f"FIXED: Gemini requested tool {tool_name} with args: {tool_args}")
-                            
-                            # Execute tool via MCP
-                            tool_result = await self.mcp_manager.call_tool(mcp_server, tool_name, tool_args)
-                            
-                            # Prepare function response
-                            function_response = {
-                                "name": tool_name,
-                                "response": tool_result
-                            }
-                            
-                            # Get final response with tool result
-                            final_response = generation_model.generate_content(
-                                [
-                                    {"role": "user", "parts": [{"text": user_query}]},
-                                    {"role": "model", "parts": response.candidates[0].content.parts},
-                                    {"role": "function", "parts": [{"function_response": function_response}]}
-                                ]
-                            )
-                            
-                            return {
-                                "provider": "gemini",
-                                "model": model_id,
-                                "mcp_server": mcp_server,
-                                "response": final_response.text,
-                                "tool_used": tool_name,
-                                "tools_available": len(tools),
-                                "fixed_implementation": True
-                            }
-            
-            # No tool use, return direct response
             return {
-                "provider": "gemini",
+                "provider": "openai",
                 "model": model_id,
                 "mcp_server": mcp_server,
-                "response": response.text,
+                "response": final_content,
+                "tool_used": tool_name,
+                "tool_input": tool_arguments,  # NEW: Capture tool input for debug
+                "tool_result": tool_results[0] if tool_results else None,  # NEW: First tool result
+                "tool_calls_made": len(message.tool_calls),
+                "tools_available": len(tools),
+                "fixed_implementation": True
+            }
+        else:
+            # No tools called, return direct response
+            return {
+                "provider": "openai",
+                "model": model_id,
+                "mcp_server": mcp_server,
+                "response": message.content,
                 "tool_used": None,
                 "tools_available": len(tools),
                 "fixed_implementation": True
             }
-                
-        except Exception as e:
-            self.logger.error(f"FIXED: Error in Gemini tool execution: {e}")
-            return {"error": f"Gemini tool execution failed: {str(e)}"}
+            
+    except Exception as e:
+        self.logger.error(f"FIXED: Error in OpenAI tool execution: {e}")
+        return {"error": f"OpenAI tool execution failed: {str(e)}"}
+    
+async def _execute_anthropic_with_tools(
+    self, 
+    provider: AnthropicProvider, 
+    model_id: str, 
+    user_query: str, 
+    system_prompt: Optional[str],
+    tools: List[Dict[str, Any]],
+    mcp_server: str
+) -> Dict[str, Any]:
+    """FIXED: Execute Anthropic request with MCP tools properly advertised."""
+    try:
+        messages = [{"role": "user", "content": user_query}]
+        
+        self.logger.info(f"FIXED: Advertising {len(tools)} tools to Anthropic model")
+        
+        # Step 1: Make request with tools
+        response = await provider.client.messages.create(
+            model=model_id,
+            max_tokens=2000,
+            messages=messages,
+            tools=tools,
+            system=system_prompt or "You are a helpful assistant with access to web search and other tools. Use tools when they would be helpful to answer the user's question."
+        )
+        
+        # Step 2: Check if Claude wants to use tools
+        if response.content and len(response.content) > 0:
+            for content_block in response.content:
+                if content_block.type == "tool_use":
+                    tool_name = content_block.name
+                    tool_args = content_block.input
+                    
+                    self.logger.info(f"FIXED: Anthropic requested tool {tool_name} with args: {tool_args}")
+                    
+                    # Execute tool via MCP
+                    tool_result = await self.mcp_manager.call_tool(mcp_server, tool_name, tool_args)
+                    
+                    # Add tool result and get final response
+                    messages.append({"role": "assistant", "content": response.content})
+                    messages.append({
+                        "role": "user", 
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": json.dumps(tool_result)
+                        }]
+                    })
+                    
+                    # Get final response
+                    final_response = await provider.client.messages.create(
+                        model=model_id,
+                        max_tokens=2000,
+                        messages=messages,
+                        tools=tools,
+                        system=system_prompt or "You are a helpful assistant with access to web search and other tools."
+                    )
+                    
+                    final_text = final_response.content[0].text if final_response.content else "No response"
+                    
+                    return {
+                        "provider": "anthropic",
+                        "model": model_id,
+                        "mcp_server": mcp_server,
+                        "response": final_text,
+                        "tool_used": tool_name,
+                        "tool_result": tool_result,
+                        "tool_input": tool_args,  # NEW: Capture tool input for debug
+                        "tools_available": len(tools),
+                        "fixed_implementation": True
+                    }
+            
+            # No tool use, return direct response
+            response_text = response.content[0].text if response.content else "No response"
+            return {
+                "provider": "anthropic",
+                "model": model_id,
+                "mcp_server": mcp_server,
+                "response": response_text,
+                "tool_used": None,
+                "tools_available": len(tools),
+                "fixed_implementation": True
+            }
+            
+    except Exception as e:
+        self.logger.error(f"FIXED: Error in Anthropic tool execution: {e}")
+        return {"error": f"Anthropic tool execution failed: {str(e)}"}
+    
+async def _execute_gemini_with_tools(
+    self, 
+    provider: GeminiProvider, 
+    model_id: str, 
+    user_query: str, 
+    system_prompt: Optional[str],
+    tools: List[Dict[str, Any]],
+    mcp_server: str
+) -> Dict[str, Any]:
+    """FIXED: Execute Gemini request with MCP tools properly advertised."""
+    try:
+        self.logger.info(f"FIXED: Advertising {len(tools)} tools to Gemini model")
+        
+        # Initialize model with system instruction
+        model_kwargs = {}
+        if system_prompt:
+            model_kwargs["system_instruction"] = system_prompt
+        else:
+            model_kwargs["system_instruction"] = "You are a helpful assistant with access to web search and other tools. Use tools when they would be helpful to answer the user's question."
+        
+        generation_model = provider.client.GenerativeModel(model_id, **model_kwargs)
+        
+        # Step 1: Make request with tools
+        response = generation_model.generate_content(
+            user_query,
+            tools=tools
+        )
+        
+        # Step 2: Check if Gemini wants to use tools
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            
+            if hasattr(candidate, 'content') and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call'):
+                        # Tool call detected
+                        func_call = part.function_call
+                        tool_name = func_call.name
+                        tool_args = dict(func_call.args)
+                        
+                        self.logger.info(f"FIXED: Gemini requested tool {tool_name} with args: {tool_args}")
+                        
+                        # Execute tool via MCP
+                        tool_result = await self.mcp_manager.call_tool(mcp_server, tool_name, tool_args)
+                        
+                        # Prepare function response
+                        function_response = {
+                            "name": tool_name,
+                            "response": tool_result
+                        }
+                        
+                        # Get final response with tool result
+                        final_response = generation_model.generate_content(
+                            [
+                                {"role": "user", "parts": [{"text": user_query}]},
+                                {"role": "model", "parts": response.candidates[0].content.parts},
+                                {"role": "function", "parts": [{"function_response": function_response}]}
+                            ]
+                        )
+                        
+                        return {
+                            "provider": "gemini",
+                            "model": model_id,
+                            "mcp_server": mcp_server,
+                            "response": final_response.text,
+                            "tool_used": tool_name,
+                            "tool_input": tool_args,  # NEW: Capture tool input for debug
+                            "tool_result": tool_result,
+                            "tools_available": len(tools),
+                            "fixed_implementation": True
+                        }
+        
+        # No tool use, return direct response
+        return {
+            "provider": "gemini",
+            "model": model_id,
+            "mcp_server": mcp_server,
+            "response": response.text,
+            "tool_used": None,
+            "tools_available": len(tools),
+            "fixed_implementation": True
+        }
+            
+    except Exception as e:
+        self.logger.error(f"FIXED: Error in Gemini tool execution: {e}")
+        return {"error": f"Gemini tool execution failed: {str(e)}"}
     
     async def cleanup(self):
         """Clean up resources."""
