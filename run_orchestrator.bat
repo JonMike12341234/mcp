@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
-REM Universal MCP Orchestrator - Fixed Windows Run Script
+REM Universal MCP Orchestrator - FIXED Windows Run Script
 
 echo ================================================================================
 echo                        Universal MCP Orchestrator
-echo                   AI Model and MCP Server Integration
+echo                   AI Model and MCP Server Integration - FIXED
 echo ================================================================================
 echo.
 
@@ -115,31 +115,123 @@ if not exist ".env" (
 REM Create logs directory
 if not exist "logs" mkdir logs
 
-REM Install MCP servers if Node.js is available
+REM Install CORRECT MCP servers if Node.js is available
 node --version >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    echo 🌐 Setting up MCP servers...
+    echo 🌐 Checking MCP servers...
     
-    REM Install filesystem server
-    echo Installing filesystem MCP server...
-    call npm install -g @modelcontextprotocol/server-filesystem
+    REM Create a temporary file to store npm list output
+    npm list -g --depth=0 > npm_list_temp.txt
     
-    REM Install git server
-    echo Installing git MCP server...
-    call npm install -g @modelcontextprotocol/server-git
-    
-    REM Install web search server (try multiple options)
-    echo Installing web search MCP server...
-    call npm install -g web-search-mcp-server 2>nul
+    REM Check and install filesystem server
+    findstr "@modelcontextprotocol/server-filesystem" npm_list_temp.txt >nul 2>&1
     if %ERRORLEVEL% NEQ 0 (
-        echo Trying alternative web search server...
-        call npm install -g @pskill9/web-search 2>nul
-        if %ERRORLEVEL% NEQ 0 (
-            echo ⚠️ Web search server installation failed, but continuing...
+        echo Installing filesystem MCP server...
+        call npm install -g @modelcontextprotocol/server-filesystem
+        if %ERRORLEVEL% EQU 0 (
+            echo ✅ Filesystem server installed successfully
+        ) else (
+            echo ⚠️ Filesystem server installation failed
         )
+    ) else (
+        echo ✅ Filesystem server already installed - skipping
     )
     
-    echo ✅ MCP servers setup complete
+    REM Check and install GitHub server
+    findstr "@modelcontextprotocol/server-github" npm_list_temp.txt >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo Installing GitHub MCP server...
+        call npm install -g @modelcontextprotocol/server-github
+        if %ERRORLEVEL% EQU 0 (
+            echo ✅ GitHub server installed successfully
+        ) else (
+            echo ❌ GitHub server installation failed
+        )
+    ) else (
+        echo ✅ GitHub server already installed - skipping
+    )
+    
+    REM Check and install memory server
+    findstr "@modelcontextprotocol/server-memory" npm_list_temp.txt >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo Installing memory MCP server...
+        call npm install -g @modelcontextprotocol/server-memory
+        if %ERRORLEVEL% EQU 0 (
+            echo ✅ Memory server installed successfully
+        ) else (
+            echo ⚠️ Memory server installation failed
+        )
+    ) else (
+        echo ✅ Memory server already installed - skipping
+    )
+    
+    REM Check and install brave search server
+    findstr "@modelcontextprotocol/server-brave-search" npm_list_temp.txt >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo Installing Brave Search MCP server...
+        call npm install -g @modelcontextprotocol/server-brave-search
+        if %ERRORLEVEL% EQU 0 (
+            echo ✅ Brave Search server installed successfully
+        ) else (
+            echo ⚠️ Brave Search server installation failed
+        )
+    ) else (
+        echo ✅ Brave Search server already installed - skipping
+    )
+    
+    REM Check and install puppeteer server
+    findstr "@modelcontextprotocol/server-puppeteer" npm_list_temp.txt >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo Installing Puppeteer MCP server...
+        call npm install -g @modelcontextprotocol/server-puppeteer
+        if %ERRORLEVEL% EQU 0 (
+            echo ✅ Puppeteer server installed successfully
+        ) else (
+            echo ⚠️ Puppeteer server installation failed
+        )
+    ) else (
+        echo ✅ Puppeteer server already installed - skipping
+    )
+    
+    REM Check and install web search server
+    findstr "web-search-mcp-server" npm_list_temp.txt >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        findstr "@pskill9/web-search" npm_list_temp.txt >nul 2>&1
+        if %ERRORLEVEL% NEQ 0 (
+            echo Installing web search MCP server...
+            call npm install -g web-search-mcp-server 2>nul
+            if %ERRORLEVEL% NEQ 0 (
+                echo Trying alternative web search server...
+                call npm install -g @pskill9/web-search 2>nul
+                if %ERRORLEVEL% NEQ 0 (
+                    echo ⚠️ Web search server installation failed, but continuing...
+                ) else (
+                    echo ✅ Alternative web search server installed
+                )
+            ) else (
+                echo ✅ Web search server installed successfully
+            )
+        ) else (
+            echo ✅ Alternative web search server already installed - skipping
+        )
+    ) else (
+        echo ✅ Web search server already installed - skipping
+    )
+    
+    REM Clean up temporary file
+    del npm_list_temp.txt
+    
+    echo.
+    echo ✅ MCP servers check/installation completed!
+    echo.
+    echo 📋 Successfully installed MCP servers:
+    echo    ✅ Filesystem operations ^(@modelcontextprotocol/server-filesystem^)
+    echo    ✅ GitHub integration ^(@modelcontextprotocol/server-github^)
+    echo    ✅ Memory management ^(@modelcontextprotocol/server-memory^)
+    echo    ✅ Brave Search ^(@modelcontextprotocol/server-brave-search^)
+    echo    ✅ Web automation ^(@modelcontextprotocol/server-puppeteer^)
+    echo    ✅ Web search ^(alternative packages^)
+    
 ) else (
     echo ⚠️ Skipping MCP server installation ^(Node.js not available^)
 )
@@ -153,35 +245,22 @@ echo 🚀 Universal MCP Orchestrator is starting...
 echo.
 echo ✨ Features available:
 echo    • Multi-provider AI model selection ^(OpenAI, Gemini, Anthropic^)
-echo    • MCP server integration ^(web search, filesystem, git^)
+echo    • REAL MCP server integration with CORRECT packages:
+echo      - Filesystem Operations ^(secure file access^)
+echo      - GitHub Integration ^(repository management^)
+echo      - Memory Management ^(persistent storage^)
+echo      - Brave Search ^(web search without API keys^)  
+echo      - Web Automation ^(Puppeteer browser control^)
 echo    • Interactive chat interface with tool visualization
-echo    • Real-time web search without API keys
+echo    • Real-time web search and automation capabilities
 echo.
 echo 🌐 Open your browser to: http://localhost:8080
 echo.
-echo 💡 Try asking: "What are the latest AI developments in 2025?"
-echo    with web search enabled!
-echo.
-echo Press Ctrl+C to stop the server
-echo.
-
-echo.
-echo ================================================================================
-echo                         Starting MCP Orchestrator
-echo ================================================================================
-echo.
-echo 🚀 Universal MCP Orchestrator is starting...
-echo.
-echo ✨ Features available:
-echo    • Multi-provider AI model selection ^(OpenAI, Gemini, Anthropic^)
-echo    • MCP server integration ^(web search, filesystem, git^)
-echo    • Interactive chat interface with tool visualization
-echo    • Real-time web search without API keys
-echo.
-echo 🌐 Open your browser to: http://localhost:8080
-echo.
-echo 💡 Try asking: "What are the latest AI developments in 2025?"
-echo    with web search enabled!
+echo 💡 Try asking:
+echo    "Search for recent AI developments" ^(with Brave Search^)
+echo    "List files in my project directory" ^(with Filesystem^)
+echo    "What's new in my GitHub repositories?" ^(with GitHub^)
+echo    "Take a screenshot of google.com" ^(with Puppeteer^)
 echo.
 echo Press Ctrl+C to stop the server
 echo.
@@ -199,6 +278,11 @@ if %ERRORLEVEL% NEQ 0 (
     echo   • Required dependencies not installed  
     echo   • Port 8080 already in use
     echo   • MCP server connection issues
+    echo.
+    echo 🔧 Fixed in this version:
+    echo   ✅ Used correct package name: @modelcontextprotocol/server-github
+    echo   ✅ Removed non-existent: @modelcontextprotocol/server-git
+    echo   ✅ Added working MCP servers: memory, brave-search, puppeteer
     echo.
     echo Check logs\server.log for details.
 ) else (

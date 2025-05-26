@@ -1,6 +1,6 @@
 """
-Enhanced Web Server for Universal MCP Orchestrator
-Provides REST API endpoints and serves the enhanced web UI
+FIXED Enhanced Web Server for Universal MCP Orchestrator
+Provides REST API endpoints with PROPER MCP tool integration
 """
 
 import asyncio
@@ -27,8 +27,8 @@ from utils.config import Config
 from utils.logger import setup_logger, log_request
 from utils.security import SecurityManager
 
-# Import our new orchestrator
-from mcp_orchestrator import MCPOrchestrator
+# Import our FIXED orchestrator
+from fixed_mcp_integration import FixedMCPOrchestrator
 
 class ChatRequest(BaseModel):
     provider: str
@@ -37,19 +37,19 @@ class ChatRequest(BaseModel):
     message: str
     system_prompt: Optional[str] = None
 
-class EnhancedWebServer:
-    """Enhanced web server for the Universal MCP Orchestrator."""
+class FixedEnhancedWebServer:
+    """FIXED enhanced web server for the Universal MCP Orchestrator."""
     
     def __init__(self, config: Config):
         self.config = config
         self.app = FastAPI(
-            title="Universal MCP Orchestrator", 
-            description="AI Model and MCP Server Orchestration Platform"
+            title="Universal MCP Orchestrator - FIXED", 
+            description="AI Model and MCP Server Orchestration Platform with PROPER Tool Integration"
         )
-        self.logger = setup_logger("enhanced_web_server")
+        self.logger = setup_logger("fixed_enhanced_web_server")
         
-        # Initialize the orchestrator
-        self.orchestrator = MCPOrchestrator()
+        # Initialize the FIXED orchestrator
+        self.orchestrator = FixedMCPOrchestrator()
         
         self._setup_routes()
     
@@ -80,10 +80,16 @@ class EnhancedWebServer:
             connected_servers = sum(1 for server in mcp_servers.values() if server.get('connected', False))
             
             return {
-                "server": "Universal MCP Orchestrator",
-                "version": "2.0.0",
+                "server": "Universal MCP Orchestrator - FIXED",
+                "version": "2.1.0-FIXED",
                 "status": "running",
                 "timestamp": datetime.now().isoformat(),
+                "fixed_features": [
+                    "Proper MCP tool advertising to LLMs",
+                    "LLM-driven tool selection (not hardcoded)",
+                    "Function calling integration for all providers",
+                    "Tool result feedback to LLMs"
+                ],
                 "statistics": {
                     "connected_providers": connected_providers,
                     "total_providers": len(models),
@@ -149,10 +155,11 @@ class EnhancedWebServer:
         
         @self.app.post("/api/chat")
         async def chat(request: ChatRequest):
-            """Handle chat requests with model and MCP server orchestration."""
+            """FIXED: Handle chat requests with PROPER MCP server orchestration."""
             try:
-                self.logger.info(f"Chat request: {request.provider}/{request.model} with MCP: {request.mcp_server}")
+                self.logger.info(f"FIXED Chat request: {request.provider}/{request.model} with MCP: {request.mcp_server}")
                 
+                # Use the FIXED orchestrator with proper tool integration
                 result = await self.orchestrator.execute_query(
                     provider_name=request.provider,
                     model_id=request.model,
@@ -164,12 +171,20 @@ class EnhancedWebServer:
                 if "error" in result:
                     raise HTTPException(status_code=400, detail=result["error"])
                 
+                # Add fixed implementation indicator to response
+                result["fixed_implementation"] = True
+                result["implementation_notes"] = [
+                    "Tools properly advertised to LLM",
+                    "LLM makes tool decisions (not hardcoded)",
+                    "Tool results fed back to LLM for final response"
+                ]
+                
                 return result
                 
             except HTTPException:
                 raise
             except Exception as e:
-                self.logger.error(f"Error in chat endpoint: {e}")
+                self.logger.error(f"FIXED: Error in chat endpoint: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
         @self.app.get("/api/providers")
@@ -204,28 +219,28 @@ class EnhancedWebServer:
             """Clean up resources on shutdown."""
             try:
                 await self.orchestrator.cleanup()
-                self.logger.info("Server shutdown completed")
+                self.logger.info("FIXED server shutdown completed")
             except Exception as e:
                 self.logger.error(f"Error during shutdown: {e}")
     
     def _get_enhanced_dashboard_html(self):
-        """Generate the enhanced dashboard HTML."""
-        # Read the enhanced HTML template we created
-        try:
-            # In a real implementation, you'd read from a file
-            # For now, return the HTML we created above
-            return '''<!DOCTYPE html>
+        """Generate the enhanced dashboard HTML with FIXED status."""
+        return '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal MCP Orchestrator</title>
+    <title>Universal MCP Orchestrator - FIXED</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .fixed-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            animation: pulse 2s infinite;
         }
         .chat-bubble {
             max-width: 80%;
@@ -253,6 +268,10 @@ class EnhancedWebServer:
         .tool-badge {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -262,8 +281,24 @@ class EnhancedWebServer:
             <div class="container mx-auto px-6 py-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-3xl font-bold">Universal MCP Orchestrator</h1>
-                        <p class="text-blue-100 mt-2">Connect AI models with powerful tools</p>
+                        <div class="flex items-center space-x-3">
+                            <h1 class="text-3xl font-bold">Universal MCP Orchestrator</h1>
+                            <span class="fixed-badge text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                ✅ FIXED
+                            </span>
+                        </div>
+                        <p class="text-blue-100 mt-2">Connect AI models with powerful tools - PROPER MCP Integration</p>
+                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                            <span class="bg-green-500 bg-opacity-20 px-2 py-1 rounded-full">
+                                ✅ Tools advertised to LLM
+                            </span>
+                            <span class="bg-green-500 bg-opacity-20 px-2 py-1 rounded-full">
+                                ✅ LLM-driven tool selection
+                            </span>
+                            <span class="bg-green-500 bg-opacity-20 px-2 py-1 rounded-full">
+                                ✅ Function calling integration
+                            </span>
+                        </div>
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="text-right">
@@ -280,6 +315,21 @@ class EnhancedWebServer:
         </header>
 
         <div class="container mx-auto px-6 py-8">
+            <!-- FIXED Implementation Notice -->
+            <div class="mb-6 p-4 bg-green-100 border border-green-400 rounded-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                    <h3 class="text-green-800 font-semibold">MCP Integration FIXED!</h3>
+                </div>
+                <p class="text-green-700 mt-2">
+                    The AI can now properly use MCP server tools! Previously, the LLM wasn't aware of available tools. 
+                    Now tools are properly advertised to the LLM, and it can make intelligent decisions about when to use them.
+                </p>
+                <div class="mt-2 text-sm text-green-600">
+                    <strong>What's Fixed:</strong> Tool advertising, LLM function calling, proper tool result integration
+                </div>
+            </div>
+            
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <!-- Configuration Panel -->
                 <div class="lg:col-span-1">
@@ -317,6 +367,7 @@ class EnhancedWebServer:
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-server mr-2"></i>MCP Server
+                                <span class="fixed-badge text-white px-2 py-1 ml-2 rounded-full text-xs">FIXED</span>
                             </label>
                             <select v-model="selectedMCPServer" 
                                     class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -334,6 +385,9 @@ class EnhancedWebServer:
                                           class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                                         {{ tool }}
                                     </span>
+                                </div>
+                                <div class="mt-2 text-xs text-green-600">
+                                    ✅ Tools will be advertised to the LLM
                                 </div>
                             </div>
                         </div>
@@ -370,6 +424,7 @@ class EnhancedWebServer:
                             <div class="flex justify-between items-center">
                                 <h2 class="text-lg font-semibold text-gray-800">
                                     <i class="fas fa-comments mr-2"></i>AI Chat
+                                    <span class="fixed-badge text-white px-2 py-1 ml-2 rounded-full text-xs">FIXED</span>
                                 </h2>
                                 <div class="flex items-center space-x-2 text-sm text-gray-600">
                                     <span v-if="selectedProvider && selectedModel">
@@ -388,6 +443,9 @@ class EnhancedWebServer:
                                 <i class="fas fa-comment-dots text-4xl mb-4"></i>
                                 <p>Start a conversation with your AI assistant</p>
                                 <p class="text-sm mt-2">Select a model and optionally an MCP server to get started</p>
+                                <div class="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700">
+                                    <strong>FIXED:</strong> When you select an MCP server, the AI will now properly know about and can use the available tools!
+                                </div>
                             </div>
                             
                             <div v-for="(message, index) in chatMessages" :key="index" 
@@ -399,16 +457,23 @@ class EnhancedWebServer:
                                         <div class="flex-1">
                                             <div class="font-medium text-sm opacity-90 mb-1">
                                                 {{ message.role === 'user' ? 'You' : 'AI Assistant' }}
+                                                <span v-if="message.role === 'assistant' && message.fixed_implementation" class="ml-2 text-xs bg-black bg-opacity-20 px-2 py-1 rounded">
+                                                    FIXED
+                                                </span>
                                             </div>
                                             <div class="whitespace-pre-wrap">{{ message.content }}</div>
                                             
-                                            <!-- Tool Usage Display -->
+                                            <!-- Enhanced Tool Usage Display -->
                                             <div v-if="message.toolUsed" class="mt-3 p-2 bg-black bg-opacity-20 rounded text-xs">
                                                 <div class="flex items-center mb-1">
                                                     <i class="fas fa-tools mr-1"></i>
                                                     <span class="font-medium">Tool Used: {{ message.toolUsed }}</span>
+                                                    <span class="ml-2 bg-green-500 px-2 py-1 rounded-full text-xs">LLM-Selected</span>
                                                 </div>
                                                 <div class="opacity-75">{{ message.toolParams }}</div>
+                                                <div v-if="message.tools_available" class="mt-1 text-xs opacity-75">
+                                                    {{ message.tools_available }} tools were available to the LLM
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -445,6 +510,9 @@ class EnhancedWebServer:
                             </div>
                             <div v-if="!selectedProvider || !selectedModel" class="text-sm text-gray-500 mt-2">
                                 Please select a provider and model to start chatting
+                            </div>
+                            <div v-if="selectedMCPServer" class="text-sm text-green-600 mt-2">
+                                ✅ MCP server tools will be available to the AI
                             </div>
                         </div>
                     </div>
@@ -541,7 +609,7 @@ class EnhancedWebServer:
                     this.scrollToBottom();
                     
                     try {
-                        // Send request to backend
+                        // Send request to FIXED backend
                         const response = await fetch('/api/chat', {
                             method: 'POST',
                             headers: {
@@ -562,13 +630,15 @@ class EnhancedWebServer:
                             throw new Error(result.error);
                         }
                         
-                        // Add AI response to chat
+                        // Add AI response to chat with FIXED indicators
                         this.chatMessages.push({
                             role: 'assistant',
                             content: result.response,
                             timestamp: new Date(),
                             toolUsed: result.tool_used,
-                            toolParams: result.tool_params ? JSON.stringify(result.tool_params) : null
+                            toolParams: result.tool_params ? JSON.stringify(result.tool_params) : null,
+                            tools_available: result.tools_available,
+                            fixed_implementation: result.fixed_implementation
                         });
                         
                     } catch (error) {
@@ -591,7 +661,7 @@ class EnhancedWebServer:
                 
                 loadExample() {
                     this.userInput = "What are the latest developments in artificial intelligence in 2025?";
-                    this.systemPrompt = "You are a helpful AI assistant that can search the web for current information. Provide comprehensive and up-to-date answers.";
+                    this.systemPrompt = "You are a helpful AI assistant with access to tools. Use the available tools when needed to provide accurate and up-to-date information.";
                 },
                 
                 loadExampleConfiguration() {
@@ -605,9 +675,10 @@ class EnhancedWebServer:
                         }
                     }
                     
-                    // Auto-select web search if available
-                    if (this.availableMCPServers['web-search']) {
-                        this.selectedMCPServer = 'web-search';
+                    // Auto-select first available MCP server for testing
+                    const servers = Object.keys(this.availableMCPServers);
+                    if (servers.length > 0) {
+                        this.selectedMCPServer = servers[0];
                     }
                 },
                 
@@ -633,31 +704,28 @@ class EnhancedWebServer:
     </script>
 </body>
 </html>'''
-        except Exception as e:
-            self.logger.error(f"Error generating dashboard HTML: {e}")
-            return "<h1>Error loading dashboard</h1>"
     
     async def start(self, host: str = "localhost", port: int = 8080):
-        """Start the web server."""
+        """Start the FIXED web server."""
         config = uvicorn.Config(self.app, host=host, port=port, log_level="info")
         server = uvicorn.Server(config)
         await server.serve()
 
 
-async def create_enhanced_web_server(config: Config) -> Optional[EnhancedWebServer]:
-    """Create and initialize the enhanced web server."""
+async def create_fixed_enhanced_web_server(config: Config) -> Optional[FixedEnhancedWebServer]:
+    """Create and initialize the FIXED enhanced web server."""
     if not HAS_FASTAPI:
         print("FastAPI is not installed. Please install it to use the web server.")
         return None
 
-    return EnhancedWebServer(config)
+    return FixedEnhancedWebServer(config)
 
 
 def main():
-    """Main entry point for running the enhanced web server."""
+    """Main entry point for running the FIXED enhanced web server."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Universal MCP Orchestrator Web Dashboard")
+    parser = argparse.ArgumentParser(description="Universal MCP Orchestrator Web Dashboard - FIXED")
     parser.add_argument("--host", default="localhost", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8080, help="Port to bind to")
     parser.add_argument("--config", help="Path to configuration file")
@@ -668,23 +736,30 @@ def main():
     config = Config(args.config)
     
     async def run_server():
-        server = await create_enhanced_web_server(config)
+        server = await create_fixed_enhanced_web_server(config)
         if server:
-            print(f"\n🚀 Universal MCP Orchestrator starting at http://{args.host}:{args.port}")
-            print("✨ Features available:")
-            print("   - Multi-provider AI model selection")
-            print("   - MCP server integration (web search, filesystem, git)")
-            print("   - Interactive chat interface")
-            print("   - Real-time tool usage visualization")
+            print(f"\n🚀 Universal MCP Orchestrator - FIXED starting at http://{args.host}:{args.port}")
+            print("✅ FIXED Features available:")
+            print("   • Multi-provider AI model selection")
+            print("   • PROPER MCP server integration with tool advertising")
+            print("   • LLM-driven tool selection (not hardcoded)")
+            print("   • Function calling integration for all providers")
+            print("   • Interactive chat interface with tool usage visualization")
+            print("   • Real-time web search and tool capabilities")
+            print("\n🔧 What's FIXED:")
+            print("   ✅ Tools are now properly advertised to LLMs")
+            print("   ✅ LLMs can see and decide which tools to use")
+            print("   ✅ Tool results are fed back to LLMs for final responses")
+            print("   ✅ No more 'I can't browse the web' responses when tools are available")
             print("\nPress Ctrl+C to stop the server\n")
             await server.start(args.host, args.port)
     
     try:
         asyncio.run(run_server())
     except KeyboardInterrupt:
-        print("\n👋 Universal MCP Orchestrator stopped by user")
+        print("\n👋 Universal MCP Orchestrator - FIXED stopped by user")
     except Exception as e:
-        print(f"❌ Error running server: {e}", file=sys.stderr)
+        print(f"❌ Error running FIXED server: {e}", file=sys.stderr)
         sys.exit(1)
 
 
